@@ -12,15 +12,9 @@ import {
   AlertTriangle 
 } from 'lucide-react';
 import QRBox from '../components/QRBox';
+import { mockApi, type Customer } from '../services/mockApi';
 
-interface Customer {
-  id: number;
-  name: string;
-  amount: number;
-  status: 'pending' | 'paid';
-  due_date: string;
-  created_at: string;
-}
+// Customer interface moved to mockApi.ts
 
 const PaymentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +23,8 @@ const PaymentPage: React.FC = () => {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string>('');
 
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+  // Use mock API for demo purposes
+  const USE_MOCK_API = true;
 
   useEffect(() => {
     fetchCustomer();
@@ -44,16 +39,30 @@ const PaymentPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/api/customers/${id}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        setCustomer(data);
-        setError('');
-      } else if (response.status === 404) {
-        setError('ไม่พบข้อมูลลูกค้า');
+      if (USE_MOCK_API) {
+        // Use mock API
+        const data = await mockApi.getCustomer(parseInt(id));
+        if (data) {
+          setCustomer(data);
+          setError('');
+        } else {
+          setError('ไม่พบข้อมูลลูกค้า');
+        }
       } else {
-        throw new Error('Failed to fetch customer');
+        // Real API call (commented out for demo)
+        const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+        const response = await fetch(`${API_BASE}/api/customers/${id}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setCustomer(data);
+          setError('');
+        } else if (response.status === 404) {
+          setError('ไม่พบข้อมูลลูกค้า');
+        } else {
+          throw new Error('Failed to fetch customer');
+        }
       }
     } catch (error) {
       console.error('Error fetching customer:', error);
@@ -68,21 +77,36 @@ const PaymentPage: React.FC = () => {
 
     setPaying(true);
     try {
-      const response = await fetch(`${API_BASE}/api/pay/${customer.id}`, {
-        method: 'POST'
-      });
-
-      if (response.ok) {
-        const updatedCustomer = await response.json();
-        setCustomer(updatedCustomer);
-        toast.success('ชำระเงินสำเร็จ!');
+      if (USE_MOCK_API) {
+        // Use mock API
+        const updatedCustomer = await mockApi.markAsPaid(customer.id);
+        if (updatedCustomer) {
+          setCustomer(updatedCustomer);
+          toast.success('ชำระเงินสำเร็จ!');
+        }
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'เกิดข้อผิดพลาดในการชำระเงิน');
+        // Real API call (commented out for demo)
+        const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+        const response = await fetch(`${API_BASE}/api/pay/${customer.id}`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          const updatedCustomer = await response.json();
+          setCustomer(updatedCustomer);
+          toast.success('ชำระเงินสำเร็จ!');
+        } else {
+          const errorData = await response.json();
+          toast.error(errorData.message || 'เกิดข้อผิดพลาดในการชำระเงิน');
+        }
       }
     } catch (error) {
       console.error('Error processing payment:', error);
-      toast.error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+      }
     } finally {
       setPaying(false);
     }

@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { RefreshCw, CreditCard, Users } from 'lucide-react';
+import { RefreshCw, CreditCard, Users, Wifi, WifiOff } from 'lucide-react';
 import CustomerForm from '../components/CustomerForm';
 import CustomersTable from '../components/CustomersTable';
+import { mockApi, detectTunnelUrl, type Customer } from '../services/mockApi';
 
-interface Customer {
-  id: number;
-  name: string;
-  amount: number;
-  status: 'pending' | 'paid';
-  due_date: string;
-  created_at: string;
-}
+// Customer interface moved to mockApi.ts
 
 const Dashboard: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tunnelUrl, setTunnelUrl] = useState<string>('');
+  const [isOnline, setIsOnline] = useState(true);
 
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+  // Use mock API for demo purposes
+  const USE_MOCK_API = true;
 
   // Auto-refresh every 5 seconds
   useEffect(() => {
@@ -29,21 +25,14 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchCustomers();
-    detectTunnelUrl();
+    detectTunnelUrlAsync();
   }, []);
 
-  const detectTunnelUrl = async () => {
+  const detectTunnelUrlAsync = async () => {
     try {
-      const response = await fetch('http://localhost:4040/api/tunnels');
-      const data = await response.json();
-      if (data.tunnels && data.tunnels.length > 0) {
-        const tunnel = data.tunnels.find((t: any) => t.config && t.config.addr);
-        if (tunnel && tunnel.public_url) {
-          setTunnelUrl(tunnel.public_url);
-        }
-      }
+      const url = await detectTunnelUrl();
+      setTunnelUrl(url);
     } catch (error) {
-      // Fallback to current origin if tunnel detection fails
       setTunnelUrl(window.location.origin);
     }
   };
@@ -51,16 +40,30 @@ const Dashboard: React.FC = () => {
   const fetchCustomers = async () => {
     try {
       setRefreshing(true);
-      const response = await fetch(`${API_BASE}/api/customers`);
-      if (response.ok) {
-        const data = await response.json();
+      setIsOnline(true);
+      
+      if (USE_MOCK_API) {
+        // Use mock API for demonstration
+        const data = await mockApi.getCustomers();
         setCustomers(data);
       } else {
-        throw new Error('Failed to fetch customers');
+        // Real API call (commented out for demo)
+        const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+        const response = await fetch(`${API_BASE}/api/customers`);
+        if (response.ok) {
+          const data = await response.json();
+          setCustomers(data);
+        } else {
+          throw new Error('Failed to fetch customers');
+        }
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
-      toast.error('ไม่สามารถดึงข้อมูลลูกค้าได้');
+      setIsOnline(false);
+      
+      if (!USE_MOCK_API) {
+        toast.error('ไม่สามารถดึงข้อมูลลูกค้าได้');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -104,7 +107,21 @@ const Dashboard: React.FC = () => {
               <CreditCard className="h-8 w-8 text-primary" />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Loan Payment System</h1>
-                <p className="text-sm text-muted-foreground">ระบบจัดการลิงก์ชำระเงินกู้</p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm text-muted-foreground">ระบบจัดการลิงก์ชำระเงินกู้</p>
+                  {USE_MOCK_API && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
+                      <Wifi className="h-3 w-3 mr-1" />
+                      Demo Mode
+                    </span>
+                  )}
+                  {!USE_MOCK_API && !isOnline && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+                      <WifiOff className="h-3 w-3 mr-1" />
+                      Offline
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <button
@@ -182,7 +199,7 @@ const Dashboard: React.FC = () => {
           <div className="lg:col-span-1">
             <CustomerForm 
               onCustomerAdded={handleCustomerAdded}
-              apiBase={API_BASE}
+              useMockApi={USE_MOCK_API}
             />
           </div>
 

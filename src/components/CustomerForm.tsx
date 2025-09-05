@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Plus, User, DollarSign, Calendar } from 'lucide-react';
-
-interface Customer {
-  id: number;
-  name: string;
-  amount: number;
-  status: 'pending' | 'paid';
-  due_date: string;
-  created_at: string;
-}
+import { mockApi, type Customer } from '../services/mockApi';
 
 interface CustomerFormProps {
   onCustomerAdded: (customer: Customer) => void;
-  apiBase: string;
+  useMockApi?: boolean;
 }
 
-const CustomerForm: React.FC<CustomerFormProps> = ({ onCustomerAdded, apiBase }) => {
+const CustomerForm: React.FC<CustomerFormProps> = ({ onCustomerAdded, useMockApi = true }) => {
   const [formData, setFormData] = useState({
     name: '',
     amount: '',
@@ -73,36 +65,55 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ onCustomerAdded, apiBase })
     setLoading(true);
     
     try {
-      const response = await fetch(`${apiBase}/api/customers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      let newCustomer: Customer;
+      
+      if (useMockApi) {
+        // Use mock API
+        newCustomer = await mockApi.createCustomer({
           name: formData.name.trim(),
           amount: parseFloat(formData.amount),
           due_date: new Date(formData.due_date).toISOString()
-        }),
-      });
-
-      if (response.ok) {
-        const newCustomer = await response.json();
-        onCustomerAdded(newCustomer);
-        
-        // Reset form
-        setFormData({
-          name: '',
-          amount: '',
-          due_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
         });
-        setErrors({});
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'เกิดข้อผิดพลาดในการเพิ่มลูกค้า');
+        // Real API call (commented out for demo)
+        const apiBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiBase}/api/customers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            amount: parseFloat(formData.amount),
+            due_date: new Date(formData.due_date).toISOString()
+          }),
+        });
+
+        if (response.ok) {
+          newCustomer = await response.json();
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'เกิดข้อผิดพลาดในการเพิ่มลูกค้า');
+        }
       }
+
+      onCustomerAdded(newCustomer);
+      
+      // Reset form
+      setFormData({
+        name: '',
+        amount: '',
+        due_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+      });
+      setErrors({});
+      
     } catch (error) {
       console.error('Error creating customer:', error);
-      toast.error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+      }
     } finally {
       setLoading(false);
     }
