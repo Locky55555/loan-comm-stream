@@ -49,7 +49,12 @@ export const mockApi = {
   // Get customer by ID
   async getCustomer(id: number): Promise<Customer | null> {
     await delay(200);
+    console.log('Mock API: Looking for customer with ID:', id);
+    console.log('Available customers:', customers.map(c => ({ id: c.id, name: c.name })));
+    
     const customer = customers.find(c => c.id === id);
+    console.log('Found customer:', customer);
+    
     return customer || null;
   },
 

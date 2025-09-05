@@ -39,15 +39,26 @@ const PaymentPage: React.FC = () => {
 
     try {
       setLoading(true);
+      console.log('Fetching customer with ID:', id);
       
       if (USE_MOCK_API) {
         // Use mock API
-        const data = await mockApi.getCustomer(parseInt(id));
+        const customerId = parseInt(id);
+        console.log('Parsed customer ID:', customerId);
+        
+        if (isNaN(customerId)) {
+          setError('รหัสลูกค้าไม่ถูกต้อง');
+          return;
+        }
+        
+        const data = await mockApi.getCustomer(customerId);
+        console.log('Mock API returned:', data);
+        
         if (data) {
           setCustomer(data);
           setError('');
         } else {
-          setError('ไม่พบข้อมูลลูกค้า');
+          setError(`ไม่พบข้อมูลลูกค้ารหัส ${id}`);
         }
       } else {
         // Real API call (commented out for demo)

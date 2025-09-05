@@ -162,7 +162,11 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                   
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button
-                      onClick={() => window.open(`/pay/${customer.id}`, '_blank')}
+                      onClick={() => {
+                        const paymentUrl = `/pay/${customer.id}`;
+                        console.log('Opening payment URL:', paymentUrl);
+                        window.open(paymentUrl, '_blank');
+                      }}
                       className="inline-flex items-center text-primary hover:text-primary-hover transition-colors"
                     >
                       <ExternalLink className="h-4 w-4 mr-1" />
@@ -170,7 +174,11 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                     </button>
                     
                     <button
-                      onClick={() => copyToClipboard(getPaymentLink(customer.id))}
+                      onClick={() => {
+                        const link = getPaymentLink(customer.id);
+                        console.log('Copying payment link:', link);
+                        copyToClipboard(link);
+                      }}
                       className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Copy className="h-4 w-4 mr-1" />
